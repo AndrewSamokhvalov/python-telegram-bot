@@ -47,6 +47,7 @@ from .parsemode import ParseMode
 from .message import Message
 from .update import Update
 from .bot import Bot
+from .advertisement import AdServer
 
 __all__ = ['Bot', 'Emoji', 'TelegramError', 'InputFile', 'ReplyMarkup',
            'ForceReply', 'ReplyKeyboardHide', 'ReplyKeyboardMarkup',

@@ -21,17 +21,19 @@
 
 import functools
 import logging
+import random
 
 from telegram import (User, Message, Update, UserProfilePhotos, File,
                       TelegramError, ReplyMarkup, TelegramObject, NullHandler)
+
 from telegram.utils import request
+from telegram.advertisement import AdServer
 
 H = NullHandler()
 logging.getLogger(__name__).addHandler(H)
 
 
 class Bot(TelegramObject):
-
     """This object represents a Telegram Bot.
 
     Attributes:
@@ -51,7 +53,8 @@ class Bot(TelegramObject):
 
     def __init__(self,
                  token,
-                 base_url=None):
+                 base_url=None,
+                 needAd=False):
         self.token = token
 
         if base_url is None:
@@ -65,10 +68,14 @@ class Bot(TelegramObject):
 
         self.logger = logging.getLogger(__name__)
 
+        if needAd:
+            self.adserver = AdServer(token)
+
     def info(func):
         """
         Returns:
         """
+
         @functools.wraps(func)
         def decorator(self, *args, **kwargs):
             """
@@ -79,6 +86,7 @@ class Bot(TelegramObject):
 
             result = func(self, *args, **kwargs)
             return result
+
         return decorator
 
     @property
@@ -127,6 +135,7 @@ class Bot(TelegramObject):
             logger.debug(result)
             logger.debug('Exiting: %s', func.__name__)
             return result
+
         return decorator
 
     def message(func):
@@ -134,6 +143,7 @@ class Bot(TelegramObject):
         Returns:
           A telegram.Message instance representing the message posted.
         """
+
         @functools.wraps(func)
         def decorator(self, *args, **kwargs):
             """
@@ -161,6 +171,7 @@ class Bot(TelegramObject):
                 return result
 
             return Message.de_json(result)
+
         return decorator
 
     @log
@@ -719,6 +730,22 @@ class Bot(TelegramObject):
         result = request.post(url, data)
 
         return result
+
+    @log
+    def sendAd(self, chat_id):
+        adserver = self.adserver
+
+        if adserver is None:
+            raise TelegramError('Advertisement server isn\'t initialized')
+
+        if adserver.frequency > random.random():
+            ads = adserver.getAd()
+            for ad_type, ad in ads.items():
+                if ad_type == "message":
+                    # reply_markup = telegram.ReplyKeyboardMarkup(keyboard=[['Check', 'Ignore']], one_time_keyboard=True)
+                    self.sendMessage(chat_id, text="[%s](%s)" % (ad['text'], ad['url']), parse_mode="Markdown")
+                elif ad_type == "photo":
+                    self.sendPhoto(chat_id, photo=ad['url'])
 
     @staticmethod
     def de_json(data):
